@@ -79,7 +79,7 @@ internal static class Strings
         while (b[0] != 0 && b[1] != 0)
         {
             result.WriteByte(b[0]);
-            result.WriteByte(b[2]);
+            result.WriteByte(b[1]);
             b = binaryReader.ReadBytes(2);
         }
 
