@@ -1,4 +1,4 @@
-﻿//
+//
 // UnsendableRecipients.cs
 //
 // Author: Kees van Spelde <sicos2002@hotmail.com>
@@ -525,7 +525,7 @@ public class RecipientRow
         // Skip the next 6 bytes
         binaryReader.ReadBytes(6);
 
-        RecipientProperties = [];
+                RecipientProperties = [];
         for (var column = 0; column < columns; column++)
         {
             var type = (PropertyType)binaryReader.ReadUInt16();
@@ -534,6 +534,7 @@ public class RecipientRow
 
             switch (type)
             {
+                case PropertyType.PT_UNSPECIFIED:
                 case PropertyType.PT_NULL:
                 {
                     data = [];
@@ -624,6 +625,7 @@ public class RecipientRow
                 case PropertyType.PT_MV_APPTIME:
                 case PropertyType.PT_MV_LONGLONG:
                 case PropertyType.PT_MV_SYSTIME:
+                case PropertyType.PT_MV_CURRENCY:
                 {
                     var count = binaryReader.ReadInt16();
                     for (var j = 0; j < count; j++)
@@ -663,7 +665,8 @@ public class RecipientRow
                 }
 
                 default:
-                    throw new ArgumentOutOfRangeException();
+                    throw new ArgumentOutOfRangeException(nameof(type), type,
+                        $"Unknown or unsupported PropertyType value 0x{(ushort)type:X4} encountered while reading column {column} of {columns}");
             }
         }
 
