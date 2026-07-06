@@ -525,7 +525,7 @@ public class RecipientRow
         // Skip the next 6 bytes
         binaryReader.ReadBytes(6);
 
-                RecipientProperties = [];
+        RecipientProperties = [];
         for (var column = 0; column < columns; column++)
         {
             var type = (PropertyType)binaryReader.ReadUInt16();
