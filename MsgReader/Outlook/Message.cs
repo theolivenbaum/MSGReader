@@ -1,4 +1,4 @@
-﻿//
+//
 // Message.cs
 //
 // Author: Kees van Spelde <sicos2002@hotmail.com>
@@ -2416,7 +2416,30 @@ public partial class Storage
 
             var recipients = GetEmailRecipients(type);
             if (Appointment?.UnsendableRecipients != null)
-                recipients.AddRange(Appointment.UnsendableRecipients.GetEmailRecipients(type));
+            {
+                try
+                {
+                    recipients.AddRange(Appointment.UnsendableRecipients.GetEmailRecipients(type));
+                }
+                catch
+                {
+                    //ignore
+                }
+            }
+
+            // When a recipient only has a display name and no e-mail address (this can happen when
+            // a recipient was resolved against an address book but the string-based MAPI properties
+            // like PR_EMAIL_ADDRESS/PR_SMTP_ADDRESS were never persisted), try to recover the address
+            // from the parsed Internet transport headers by matching on display name.
+            List<RfcMailAddress> headerAddresses = null;
+            if (Headers != null)
+                headerAddresses = type switch
+                {
+                    RecipientType.To => Headers.To,
+                    RecipientType.Cc => Headers.Cc,
+                    RecipientType.Bcc => Headers.Bcc,
+                    _ => null
+                };
 
             foreach (var recipient in recipients)
             {
@@ -2428,12 +2451,24 @@ public partial class Storage
                 if (!string.IsNullOrEmpty(recipient.DisplayName))
                     tempOutput += "\"" + recipient.DisplayName + "\"";
 
-                if (!string.IsNullOrEmpty(recipient.Email))
+                var email = recipient.Email;
+
+                if (string.IsNullOrEmpty(email) && !string.IsNullOrEmpty(recipient.DisplayName) && headerAddresses != null)
+                {
+                    var match = headerAddresses.FirstOrDefault(address =>
+                        !string.IsNullOrEmpty(address.DisplayName) &&
+                        string.Equals(address.DisplayName, recipient.DisplayName, StringComparison.OrdinalIgnoreCase));
+
+                    if (match != null && !string.IsNullOrEmpty(match.Address))
+                        email = match.Address;
+                }
+
+                if (!string.IsNullOrEmpty(email))
                 {
                     if (!string.IsNullOrEmpty(tempOutput))
                         tempOutput += " ";
 
-                    tempOutput += "<" + recipient.Email + ">";
+                    tempOutput += "<" + email + ">";
                 }
 
                 output += tempOutput;
@@ -2464,8 +2499,17 @@ public partial class Storage
 
             var recipients = GetEmailRecipients(type);
             if (Appointment?.UnsendableRecipients != null)
-                recipients.AddRange(Appointment.UnsendableRecipients.GetEmailRecipients(type));
-
+            {
+                try
+                {
+                    recipients.AddRange(Appointment.UnsendableRecipients.GetEmailRecipients(type));
+                }
+                catch
+                {
+                    //ignore
+                }
+            }
+                
             foreach (var recipient in recipients)
             {
                 if (output != string.Empty)
