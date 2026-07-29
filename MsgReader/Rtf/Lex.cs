@@ -164,8 +164,16 @@ internal class Lex
                         var text = new StringBuilder();
                         text.Append((char)_reader.Read());
                         text.Append((char)_reader.Read());
-                        token.HasParam = true;
-                        token.Param = Convert.ToInt32(text.ToString().ToLower(), 16);
+
+                        if (int.TryParse(
+                                text.ToString(),
+                                NumberStyles.HexNumber,
+                                CultureInfo.InvariantCulture,
+                                out var param))
+                        {
+                            token.HasParam = true;
+                            token.Param = param;
+                        }
                     }
                 }
 
@@ -190,34 +198,37 @@ internal class Lex
 
         token.Key = keyword.ToString();
 
-        // Read an integer
+        // Read an integer. Malformed parameters are ignored so that the remainder of the RTF can still be parsed.
         if (char.IsDigit((char)c) || c == '-')
         {
-            token.HasParam = true;
-            var negative = false;
+            var parameterText = new StringBuilder();
 
             if (c == '-')
             {
-                negative = true;
+                parameterText.Append('-');
                 _reader.Read();
+                c = _reader.Peek();
             }
-
-            c = _reader.Peek();
-
-            var text = new StringBuilder();
 
             while (char.IsDigit((char)c))
             {
                 _reader.Read();
-                text.Append((char)c);
+                parameterText.Append((char)c);
                 c = _reader.Peek();
             }
 
-            var param = Convert.ToInt32(text.ToString());
-            if (negative)
-                param = -param;
-
-            token.Param = param;
+            // A '-' without digits and values outside Int32 are invalid RTF parameters, but must not abort the entire message parse.
+            if (parameterText.Length > 0 &&
+                parameterText.ToString() != "-" &&
+                int.TryParse(
+                    parameterText.ToString(),
+                    NumberStyles.Integer,
+                    CultureInfo.InvariantCulture,
+                    out var param))
+            {
+                token.HasParam = true;
+                token.Param = param;
+            }
         }
 
         if (c == ' ')
