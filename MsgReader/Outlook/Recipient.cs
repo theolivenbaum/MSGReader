@@ -1,4 +1,4 @@
-﻿//
+//
 // Recipient.cs
 //
 // Author: Kees van Spelde <sicos2002@hotmail.com>
@@ -25,6 +25,7 @@
 //
 
 using System;
+using System.Text;
 using MsgReader.Helpers;
 
 namespace MsgReader.Outlook;
@@ -172,6 +173,25 @@ public partial class Storage
             {
                 var testEmail = GetMapiPropertyString(MapiTags.PR_ORGEMAILADDR);
                 if (!string.IsNullOrEmpty(testEmail) && testEmail.Contains("@")) tempEmail = testEmail;
+            }
+
+            // As a last resort, some recipients (typically resolved against an Exchange address book)
+            // never get PR_EMAIL_ADDRESS, PR_SMTP_ADDRESS or PR_ORGEMAILADDR populated, but still carry
+            // a usable address inside PR_SEARCH_KEY. This is stored as an ASCII, null-terminated string
+            // prefixed with the address type, e.g. "SMTP:name@domain.com"
+            if (string.IsNullOrEmpty(tempEmail) || !tempEmail.Contains("@"))
+            {
+                var searchKey = GetMapiPropertyBytes(MapiTags.PR_SEARCH_KEY);
+                if (searchKey != null)
+                {
+                    var searchKeyString = Encoding.ASCII.GetString(searchKey).TrimEnd('\0');
+                    if (searchKeyString.StartsWith("SMTP:", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var testEmail = searchKeyString.Substring(5);
+                        if (!string.IsNullOrEmpty(testEmail) && testEmail.Contains("@"))
+                            tempEmail = testEmail;
+                    }
+                }
             }
 
             tempEmail = EmailAddress.RemoveSingleQuotes(tempEmail);
